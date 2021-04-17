@@ -35,6 +35,6 @@ foreach($ip in $ips) {
 # Add our new routes to Azure Virtual Network
 foreach($subnet in $ips) {
     "Adding route to Azure: " + $subnet
-    echo "route add $ip MASK 255.255.255.0 $azureIpAddress"
+    Write-Output "route add $ip MASK 255.255.255.0 $azureIpAddress"
     route add $subnet MASK 255.255.255.0 $azureIpAddress
 } 
