@@ -1,0 +1,586 @@
+
+
+<!doctype html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js" lang="en">
+<!--<![endif]-->
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>
+    Deconstructing the Azure Point-to-Site VPN for Command Line usage -  Doug Rathbone</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="revisit-after" content="7 days">
+    <meta name="robots" content="index,follow">
+    <meta name="rating" content="General">
+    <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="EditURI" type="application/rsd+xml" title="RSD" href="http://dougrathbone.com/livewriter?rsd" />
+    <link rel="stylesheet" href="/asset/css/style.min.css" />
+    <script src="https://cdn.logrocket.io/LogRocket.min.js" crossorigin="anonymous"></script>
+    <script>window.LogRocket && window.LogRocket.init('sdkxcg/dougrathbonecom');</script>
+    <script src="/asset/js/modernizr-2.0.6.min.js" async></script>
+    <script type="text/javascript">
+        !function (a, b, c, d, e, f, g) {
+        a.RaygunObject = e, a[e] = a[e] || function () {
+            (a[e].o = a[e].o || []).push(arguments)
+        }, f = b.createElement(c), g = b.getElementsByTagName(c)[0],
+            f.async = 1, f.src = d, g.parentNode.insertBefore(f, g)
+        }(window, document, "script", "//cdn.raygun.io/raygun4js/raygun.min.js", "rg4js");
+    </script>
+</head>
+<body>
+    <div id="container">
+        <header id="site-header">
+            <a href="/">
+                <h1>Doug Rathbone</h1>
+                <em>Leadership and internet musings from the Perl generation...</em>
+            </a>
+            
+
+        </header>
+        <div id="main" role="main">
+            <section id="main-content">
+                
+
+<article>
+    <header>
+        <h1 class="article-title"><a href="/blog/2013/11/27/deconstructing-the-azure-point-to-site-vpn-for-command-line-usage">Deconstructing the Azure Point-to-Site VPN for Command Line usage</a></h1>
+            <div class="sharing">
+                <div class="share-widget">
+                    <!-- AddThis Button BEGIN -->
+                    <div class="addthis_toolbox addthis_default_style addthis_32x32_style">
+                        <a class="addthis_button_preferred_1"></a>
+                        <a class="addthis_button_preferred_2"></a>
+                        <a class="addthis_button_preferred_3"></a>
+                        <a class="addthis_button_preferred_4"></a>
+                        <a class="addthis_button_compact"></a>
+                        <a class="addthis_counter addthis_bubble_style"></a>
+                    </div>
+                    <!-- AddThis Button END -->
+                </div>
+            </div>
+        <time datetime="20111119T12:00:00">27 November 2013</time>
+        <span class="comments"><a href="/blog/2013/11/27/deconstructing-the-azure-point-to-site-vpn-for-command-line-usage#disqus_thread" data-disqus-identifier="07169f53-b2c5-4c1b-ad95-97441f338618">comments</a></span>
+    </header>
+    <div class="article-content">
+        <p>When configuring an Azure Virtual Network one of the most common things you'll want to do is setup a <a href="http://blogs.msdn.com/b/piyushranjan/archive/2013/06/01/point-to-site-vpn-in-azure-virtual-networks.aspx">Point-to-Site VPN</a> so that you can actually get to your servers to manage and maintain them. Azure Point-to-Site VPNs use client certificates to secure connections which can be quite complicated to configure so Microsoft has gone the extra mile to make it easy for you to configure and get setup – sadly at the cost of losing the ability to connect through the command line or through PowerShell – Let's change that.</p> <h3>Current state of play == No Command line VPN connections</h3> <p>Normally when you want to launch a VPN from the CLI or PowerShell in Windows you can simply use the following command:</p><pre class="code">rasdial "My home VPN"</pre>
+<p><a href="/asset/blogimages/b7ce6045-6bd7-470c-af7f-9e9ea5eb0950_image_14.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/1444f5a8-9c41-43e9-ae57-842941cff82c_image_thumb_6.png" width="373" height="165"></a></p>
+<p>The Azure pre-packaged VPN doesn't allow this because it's really just not a normal VPN. It's <em>something else</em>, something mysterious - not a normal native Windows VPN connection.</p>
+<p>When you run the Azure VPN through the command line you get this (you'll see a hint as to why I'd be using Azure Point-to-site in this screenshot):</p>
+<p><a href="/asset/blogimages/d9d6d67d-22dd-45b0-aa45-981d071fb093_image_18.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/a4b2d8ff-ef1e-4783-a2e9-72997efc7d11_image_thumb_8.png" width="426" height="156"></a></p>
+<p>Azure VPNs don't <em>appear</em> to support this.</p>
+<p>If you want to keep your servers behind a private network in Azure and use continuous deployment to get your code into production this makes it <em><strong>hard to deploy</strong> </em>without a human being around. Not really the best case scenario – especially when you remind yourself that automated builds aim to do away with human error altogether.</p>
+<h3>What the Azure Point-to-Site looks like out of the box</h3>
+<p>When you first go to setup a Point-to-site VPN into your Azure virtual network Microsoft points you at a page that walks you through <a href="http://blogs.msdn.com/b/piyushranjan/archive/2013/06/01/point-to-site-vpn-in-azure-virtual-networks.aspx">creating a client certificate on your local machine</a> to use as authentication.</p>
+<p>They then get you to download a package for setting up the Azure VPN RAS dialler on your local machine.</p>
+<p>This is accessed from within the Azure "Networks" page for your virtual network.</p>
+<p><a href="/asset/blogimages/c3b0cfd4-4953-4e61-a80b-7034d038cdf4_image_6.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/3651fb55-c0e8-47fb-a518-6dc98c834f60_image_thumb_2.png" width="484" height="278"></a></p>
+<p>You install this package and then whenever connecting you're greeted with a connection screen that you might of seen in a previous life. And by <em>seen</em> I don't mean that Windows Azure Virtual Networks have been around for ages. But more that the login screen may look familiar. </p>
+<p><a href="/asset/blogimages/e258f0cb-ef44-457e-9a8d-b60b45bf4cb1_image_8.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/c4ee0dbe-6656-4434-9a6b-1e7ec59187f0_image_thumb_3.png" width="362" height="375"></a></p>
+<p>This is because this login screen is a Microsoft "<a href="http://technet.microsoft.com/en-us/library/cc767160.aspx">Connection Manager</a>" login screen and has been around for a while.</p>
+<p>Example from TechNet (note extremely dated Bitmap awesomeness):</p>
+<p><a href="/asset/blogimages/e824c679-c0a8-4953-856d-27c1d7ae1e22_image_10.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/d1ef1d04-25f8-4286-9883-18f64e056989_image_thumb_4.png" width="445" height="464"></a></p>
+<p>Connection Manager is used to pre-package VPN and dial up connections for easy-install distribution in a large organisation. This also means we can reconstruct the underlying VPN connection and use it as a normal VPN – claiming back our CLI super powers.</p>
+<h3>Digging through the details</h3>
+<p>So what we really want to know is: </p>
+<blockquote>
+<p>What is this mystical VPN technology the people at Microsoft have bestowed upon us?</p></blockquote>
+<p>Here's how I started getting more information about the implementation:</p>
+<ul>
+<li>Connecting once successfully then disconnect. 
+<li>Open it up again to connect and click on <strong>Properties</strong> 
+<li>Then clicking on <strong>View Log</strong></li></ul>
+<p><a href="/asset/blogimages/dcbdb0be-c23b-4fd5-9fbc-679cdb0ce8b8_image_20.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/2a32c6f9-1ca9-474f-8d6b-abd465ac6bbe_image_thumb_9.png" width="484" height="301"></a></p>
+<p>You'll then be greeted by something that looks like this:</p><pre class="code"><span style="background: white; color: black">******************************************************************
+    Operating System      : Windows NT 6.2 
+    Dialler Version        : 7.2.9200.16384
+    Connection Name       : My Azure Virtual Network
+    All Users/Single User : Single User
+    Start Date/Time       : 24/11/2013, 7:50:31
+******************************************************************
+    Module Name, Time, Log ID, Log Item Name, Other Info
+    For Connection Type, 0=dial-up, 1=VPN, 2=VPN over dial-up
+******************************************************************
+[cmdial32]    7:50:31    03    Pre-Init Event    CallingProcess = C:\Windows\system32\CMMON32.EXE
+[cmdial32]    7:50:39    04    Pre-Connect Event    ConnectionType = 1
+[cmdial32]    7:50:39    06    Pre-Tunnel Event    UserName = MyClientSSLCertificate Domain =  DUNSetting = [OBFUSCATED AZURE GATEWAY ID] Tunnel DeviceName =  TunnelAddress = [OBFUSCATED AZURE GATEWAY ID].cloudapp.net
+[cmdial32]    7:50:44    07    Connect Event    
+[cmdial32]    7:50:44    08    Custom Action Dll    ActionType = Connect Actions Description = to update your routing table ActionPath = C:\Users\Doug\AppData\Roaming\Microsoft\Network\Connections\Cm\[OBFUSCATED AZURE GATEWAY ID]\CMROUTE.DLL ReturnValue = 0x0
+[CMMON32]    7:56:21    23    External Disconnect    
+[cmdial32]    7:56:21    13    Disconnect Event    CallingProcess = C:\Windows\Explorer.EXE</span></pre>
+<p>&nbsp;</p>
+<p>More importantly you'll see this path included in the connection:</p>
+<p><a href="/asset/blogimages/7fea535e-7e11-4647-8bd2-5197ea1125c4_image_22.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/9617ed1f-b551-4a0a-a968-0b59b6ae4fa1_image_thumb_10.png" width="604" height="25"></a></p>
+<p>Within this folder is all the magic connection manager odds and ends. Apologies for the [Obfuscated], simply the path contains information to my azure endpoint.</p>
+<p>Within this folder you'll see a bunch of files:</p>
+<p><a href="/asset/blogimages/a45f5dfc-4cea-4716-9e9e-d93a6c476e15_image_24.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/2377675a-2981-4bad-8ac6-6f9999ccdde5_image_thumb_11.png" width="484" height="264"></a></p>
+<p>Most importantly there is a PBK file – a Personal Phonebook. This is what stores the connect settings for the VPN as is a commonly distributed way of sending out connection settings in the Enterprise. If you run this on its own you'll actually be able to connect to the VPN directly (without your network routes being updated).</p>
+<p><a href="/asset/blogimages/a00f8a90-a2f1-4554-83b6-44c07df659a5_image_26.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/3ae90750-207f-434f-89f2-a3e010d85c2f_image_thumb_12.png" width="370" height="144"></a></p>
+<p>This phonebook is where we can steal our settings from to recreate a command line driven connection.</p>
+<h3>Setting it up</h3>
+<p>Open up the properties of your Azure Point-To-Site VPN phonebook above, and copy the connection address.</p>
+<p><a href="/asset/blogimages/e1011d34-d849-4ccd-ace5-b8ea4b69da0f_image_30.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/05a89a40-804e-482b-a9d6-9a7c8c3acab1_image_thumb_14.png" width="381" height="486"></a></p>
+<p>It will look like this:</p>
+<p><strong>azuregateway-[Guid].cloudapp.net</strong></p>
+<p>Open <strong>Network Sharing Centre</strong>, and create a new connection. Then select <strong>Connect to a workplace</strong>.</p>
+<p><a href="/asset/blogimages/c33af7ff-3586-4e0b-ac0f-3dcbc39ef43c_image_28.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/1cc33907-5e9c-4af4-b2da-c94481ecacd3_image_thumb_13.png" width="600" height="360"></a></p>
+<p>Select that you'll "Use my internet connection".</p>
+<p><a href="/asset/blogimages/181374b4-7ca3-40e3-86aa-72f0a8aafc80_image_32.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/b3f9cabb-b0e7-4fd9-b1f7-60f76bd93db6_image_thumb_15.png" width="484" height="360"></a></p>
+<p>Then enter your Azure Point-To-Site VPN address and then give your new connection a name. Remember this name for later</p>
+<p><a href="/asset/blogimages/f2333026-f65d-4636-9f72-10836f51fda4_image_34.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/c023b6f1-d0be-4a09-8541-4dd10a9460ef_image_thumb_16.png" width="484" height="360"></a></p>
+<p>Then click <strong>Create</strong> to save your VPN.</p>
+<p>Now open the connection properties for your newly created VPN. This is where we'll use the settings in your Azure Diallers config to setup your connection.</p>
+<p>I'll save you the hassle of showing you me copying the settings from one connection to another and instead i'll just focus on what <em>you</em> need to set them to.</p>
+<p>Flick over to the <strong>Options </strong>tab and then click <strong>PPP Settings</strong>. Click the 2 missing options<strong> Enable software compression</strong> and <strong>Negotiate multi-link for single-link connections</strong>.</p>
+<p><a href="/asset/blogimages/186abc6e-4b1f-4ee4-bc4e-c5a5de404f49_image_38.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/99c65926-e9a1-4ae8-bf60-b7507a1043f2_image_thumb_18.png" width="383" height="365"></a></p>
+<p>Set the type of VPN to <strong>Secure Socket Tunnelling Protocol (SSTP),</strong> Turn on EAP and select <strong>Microsoft: Smart Card of other certificate</strong> as the authentication type.</p>
+<p><a href="/asset/blogimages/dca0681c-decb-4fa4-bd6a-750674d06b04_image_40.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/c56dd112-79a9-4d6b-ba02-3ea77ade404a_image_thumb_19.png" width="379" height="316"></a></p>
+<p>Then click on <strong>Properties</strong>.</p>
+<p>Select "Use a certificate on this computer", un-tick "Connect to these servers", and then select the certificate that uses your Azure endpoint Uri as its certificate name and then save out.</p>
+<p><a href="/asset/blogimages/873d3fb5-a954-4dc6-855d-44e07f4da739_image_46.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/36dc4ee2-4801-41cc-8d6e-391ae8b3f6b2_image_thumb_22.png" width="398" height="404"></a></p>
+<p>Then flick over to the <strong>Network</strong> tab. Open <strong>TCP/IPV4</strong> then <strong>Advanced</strong> then untick <strong>Use default gateway on remote network</strong>. This setting stops internet traffic going over the VPN while you're connected so you can still surf reddit while managing your Azure environment.</p>
+<p><a href="/asset/blogimages/0e2db0f7-b0a9-4e52-8fc3-f91c72ee5ff3_image_54.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; margin: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/6dff78c1-32b7-49ac-92d0-6aa27fbe1bfa_image_thumb_26.png" width="484" height="248"></a></p>
+<p>Close the VPN configuration panel.</p>
+<p>You now have a working VPN connection to Azure.</p>
+<p>When you connect using windows you'll be asked to select the name of the client certificate you'll be authenticating with. You select the certificate you created and uploaded into Azure before you setup your connection.</p>
+<p><a href="/asset/blogimages/0b784e12-2956-452b-94cc-70da74f72021_image_48.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/fa717c1f-b853-4f24-ab7f-9ece2c030f87_image_thumb_23.png" width="314" height="455"></a></p>
+<p>When you connect using the command line you don't need to specify your certificate:</p><pre class="code">rasdial "Azure VPN"</pre>
+<p><a href="/asset/blogimages/258e3125-d22a-4643-8086-7c2f55f6cf1a_image_50.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/11c50490-6ff1-4368-b792-04aa61709ae1_image_thumb_24.png" width="465" height="244"></a></p>
+<p>But there's one catch: Your local machine's route table doesn't know when to send any traffic to your Azure Virtual Network. The network link is there, but Windows doesn't know what to send over your internet link and what to send over the VPN link.</p>
+<p>You see Microsoft did a few things when they packaged your connection manager, and one of these things was to also copy a file called "cmroute.dll" and call this after connection to route your traffic onto your Virtual Network. This file altered your routing table to route traffic to your Virtual Network subnets <em>through the VPN connection</em>.</p>
+<p>We can do the same thing – so lets go about it.</p>
+<h3></h3>
+<h3>What's this about Routing... Rooting (for the English speakers in the room)</h3>
+<p>My Azure Virtual Network consists of the following network range:</p>
+<p><strong>10.0.0.0/8</strong></p>
+<p>I also have the following subnets for different machines groups.</p>
+<p><strong>10.0.1.0/24 (Web Servers)</strong></p>
+<p><strong>10.0.2.0/24 (Application Servers)</strong></p>
+<p><strong>10.0.3.0/24 (Management services)</strong></p>
+<p>My PPTP Connections, or Point-To-Site connections sit on the range: <strong>172.16.0/24</strong></p>
+<p>This means that when I connect to the Azure VPN I will get an IP address in this range. Example: <strong>172.16.0.17</strong></p>
+<p>When this happens we need to tell Windows to route all traffic going to my 10.0.X.X range IP addresses through the IP address that has been given to us by Azure's VPN RRAS service.</p>
+<p>You can see your current routing table by entering <strong>route PRINT</strong> into a command prompt or PowerShell console.</p>
+<p><a href="/asset/blogimages/ab5ed13b-5ebe-4b94-aeec-5070d473b86a_image_56.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/3d571671-cccb-4df2-95ce-e16bf120fccb_image_thumb_27.png" width="600" height="233"></a></p>
+<h3>Automating the Routing Additions</h3>
+<p>Luckily the Windows Task Scheduler supports event listeners that allow us to watch for VPN connections and run commands off the back of them.</p>
+<p>Take the below PowerShell Script below and save it for arguments sake in <strong>C:\Scripts\UpdateRouteTableForAzureVPN.ps1</strong></p><pre class="code"> <span style="color: #006400">#############################################################
+# Adds IP routes to Azure VPN through the Point-To-Site VPN
+#############################################################
+
+# Define your Azure Subnets
+</span><span style="color: #ff4500">$ips </span><span style="color: #a9a9a9">= </span>@(<span style="color: darkred">"10.0.1.0"</span><span style="color: #a9a9a9">, </span><span style="color: darkred">"10.0.2.0"</span><span style="color: #a9a9a9">,</span><span style="color: darkred">"10.0.3.0"</span>)
+
+<span style="color: #006400"># Point-To-Site IP address range
+# should be the first 4 octets of the ip address '172.16.0.14' == '172.16.0.
+
+</span><span style="color: #ff4500">$azurePptpRange </span><span style="color: #a9a9a9">= </span><span style="color: darkred">"172.16.0."
+
+</span><span style="color: #006400"># Find the current new DHCP assigned IP address from Azure
+</span><span style="color: #ff4500">$azureIpAddress </span><span style="color: #a9a9a9">= </span><span style="color: blue">ipconfig </span><span style="color: #a9a9a9">| </span><span style="color: blue">findstr </span><span style="color: #ff4500">$azurePptpRange
+
+</span><span style="color: #006400"># If Azure hasn't given us one yet, exit and let u know
+</span><span style="color: #00008b">if </span>(<span style="color: #a9a9a9">!</span><span style="color: #ff4500">$azureIpAddress</span>){
+    <span style="color: darkred">"You do not currently have an IP address in your Azure subnet."
+    </span><span style="color: #00008b">exit </span><span style="color: purple">1
+</span>}
+
+<span style="color: #ff4500">$azureIpAddress </span><span style="color: #a9a9a9">= </span><span style="color: #ff4500">$azureIpAddress</span><span style="color: #a9a9a9">.</span>Split(<span style="color: darkred">": "</span>)
+<span style="color: #ff4500">$azureIpAddress </span><span style="color: #a9a9a9">= </span><span style="color: #ff4500">$azureIpAddress</span><span style="color: #a9a9a9">[</span><span style="color: #ff4500">$azureIpAddress</span><span style="color: #a9a9a9">.</span>Length<span style="color: #a9a9a9">-</span><span style="color: purple">1</span><span style="color: #a9a9a9">]
+</span><span style="color: #ff4500">$azureIpAddress </span><span style="color: #a9a9a9">= </span><span style="color: #ff4500">$azureIpAddress</span><span style="color: #a9a9a9">.</span>Trim()
+
+<span style="color: #006400"># Delete any previous configured routes for these ip ranges
+</span><span style="color: #00008b">foreach</span>(<span style="color: #ff4500">$ip </span><span style="color: #00008b">in </span><span style="color: #ff4500">$ips</span>) {
+    <span style="color: #ff4500">$routeExists </span><span style="color: #a9a9a9">= </span><span style="color: blue">route </span><span style="color: #8a2be2">print </span><span style="color: #a9a9a9">| </span><span style="color: blue">findstr </span><span style="color: #ff4500">$ip
+    </span><span style="color: #00008b">if</span>(<span style="color: #ff4500">$routeExists</span>) {
+        <span style="color: darkred">"Deleting route to Azure: " </span><span style="color: #a9a9a9">+ </span><span style="color: #ff4500">$ip
+        </span><span style="color: blue">route </span><span style="color: #8a2be2">delete </span><span style="color: #ff4500">$ip
+    </span>}
+}
+
+<span style="color: #006400"># Add our new routes to Azure Virtual Network
+</span><span style="color: #00008b">foreach</span>(<span style="color: #ff4500">$subnet </span><span style="color: #00008b">in </span><span style="color: #ff4500">$ips</span>) {
+    <span style="color: darkred">"Adding route to Azure: " </span><span style="color: #a9a9a9">+ </span><span style="color: #ff4500">$subnet
+    </span><span style="color: blue">echo </span><span style="color: darkred">"route add </span><span style="color: #ff4500">$ip </span><span style="color: darkred">MASK 255.255.255.0 </span><span style="color: #ff4500">$azureIpAddress</span><span style="color: darkred">"
+    </span><span style="color: blue">route </span><span style="color: #8a2be2">add </span><span style="color: #ff4500">$subnet </span><span style="color: #8a2be2">MASK 255.255.255.0 </span><span style="color: #ff4500">$azureIpAddress
+</span>} 
+</pre>
+<p>Now execute the following from an elevated command prompt window. This tells Windows to add an event listener based task that looks for events to our "Azure VPN" connection and if it sees them, it runs our PowerShell script.</p><pre class="code">schtasks /create /F /TN "VPN Connection Update" /TR "Powershell.exe -NonInteractive -command C:\Scripts\UpdateRouteTableForAzureVPN.ps1" /SC ONEVENT /EC Application /MO "*[System[(Level=4 or Level=0) and (EventID=20225)]] and *[EventData[Data='Azure VPN']] "</pre>
+<p>If I then connect to my VPN the above script should execute.</p>
+<p>After connecting if I check my routing table by entering <strong>route PRINT</strong>&nbsp; into a console application we have our routes to Azure added correctly.</p>
+<p><a href="/asset/blogimages/7bedf0f2-ebad-442d-9e8a-c97ab201c7a8_image_58.png"><img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="/asset/blogimages/3a92e1d2-55de-48b1-9e7f-bb112f4406c9_image_thumb_28.png" width="600" height="153"></a></p>
+<h3>We're Done!</h3>
+<p>With that we're now able to fully use an Azure Point-to-Site VPN simply from the command line. This means we can use it as part of a build server deployment, or if you're working on it all the time you can simply set it up to connect <a href="http://blog.lan-tech.ca/2012/04/29/connect-to-windows-vpn-at-logon/">every time you login to windows</a>.</p>
+<p>Command line usage</p><pre class="code">rasdial "[Connection name]"
+rasdial "[Connection name]" /disconnect</pre>
+<p>For my connection named "Azure VPN" this command line usage becomes:</p><pre class="code">rasdial "Azure VPN"
+rasdial "Azure VPN" /disconnect</pre>
+    </div>
+    <footer>
+            <nav class="related-posts">
+                <h3>Related posts:</h3>
+                <ul>
+                        <li><a href="/blog/2020/09/14/making-linux-samba-shares-browsable-to-windows-hosts-after-wannacry">Making Linux Samba shares visible to Windows hosts after WannaCry</a></li>
+                        <li><a href="/blog/2020/03/29/the-dirty-dozen-ndash-what-engineering-teams-can-learn-from-human-factors-in-aviation">Engineering teams can learn from Human Factors in Aviation</a></li>
+                        <li><a href="/blog/2018/04/02/fixing-broken-samba-sharing-after-installing-the-latest-version-of-windows-10">Fixing broken Samba File Share access for Linux hosts after installing the latest version of Windows 10</a></li>
+                        <li><a href="/blog/2018/03/31/configuring-a-thirdparty-asus-rtac3200-router-to-directly-connect-to-a-centurylink-gigabit-gpon-service">Configuring a Third-Party Asus RT-AC3200 router to directly connect to a CenturyLink Gigabit GPON Service</a></li>
+                        <li><a href="/blog/2018/03/31/configuring-a-ubiquiti-unifi-controller-to-run-on-raspberry-pi">Migrating a Ubiquiti Unifi Controller to run on a Raspberry Pi for Pennies</a></li>
+                </ul>
+            </nav>
+
+        <nav class="tags">
+            <ul>
+                        <li><a href="/tag/azure">Azure</a>                                                                                                               , 
+</li>
+                        <li><a href="/tag/tips-and-tricks">Tips and Tricks</a>                                                                                                               , 
+</li>
+                        <li><a href="/tag/cloud-services">Cloud Services</a>                                                                                                               , 
+</li>
+                        <li><a href="/tag/continuous-integration">Continuous Integration</a>                                                                                                               , 
+</li>
+                        <li><a href="/tag/deployment">Deployment</a>                                                                                                               , 
+</li>
+                        <li><a href="/tag/networking">Networking</a></li>
+
+            </ul>
+        </nav>
+            <div class="sharing">
+                <p>Like this post? Why not share it!</p>
+                <div class="share-widget">
+                    <!-- AddThis Button BEGIN -->
+                    <div class="addthis_toolbox addthis_default_style addthis_32x32_style">
+                        <a class="addthis_button_preferred_1"></a>
+                        <a class="addthis_button_preferred_2"></a>
+                        <a class="addthis_button_preferred_3"></a>
+                        <a class="addthis_button_preferred_4"></a>
+                        <a class="addthis_button_compact"></a>
+                    </div>
+                    <!-- AddThis Button END -->
+                </div>
+            </div>
+
+    </footer>
+</article>
+<div class="clear"></div>
+    <div class="comments" id="comments">
+        <a name="comments"></a>
+        <div id="disqus_comments_container">
+            <div id="disqus_thread">
+            </div>
+        </div>
+        <script type="text/javascript">
+            var disqus_shortname = 'diaryofaninja';
+            var disqus_identifier = '07169f53-b2c5-4c1b-ad95-97441f338618';
+            var disqus_url = 'http://dougrathbone.com/blog/2013/11/27/deconstructing-the-azure-point-to-site-vpn-for-command-line-usage';
+;
+                
+				/* * * DON'T EDIT BELOW THIS LINE * * */
+				(function () {
+					var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+					dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+					(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+				})();
+
+                 /* * * DON'T EDIT BELOW THIS LINE * * */
+                (function () {
+                    var s = document.createElement('script'); s.async = true;
+                    s.type = 'text/javascript';
+                    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+                    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+                }());
+			
+;
+        </script>
+    </div>
+    <script type="text/javascript" src="https://s7.addthis.com/js/250/addthis_widget.js#pubid=dougrathbone"> </script>
+
+
+            </section>
+            <aside id="sidebar">
+
+                <section id="sb-main">
+                    <ul id="channels" class="module">
+                        <li id="channel-rss"><a href="/rss/main">RSS</a></li>
+                        <li id="channel-email"><a href="/me">Email</a></li>
+                        <li id="channel-twitter"><a href="http://www.twitter.com/dougrathbone">Twitter</a></li>
+                        <li id="channel-facebook"><a href="http://www.facebook.com/dougrathbone">Facebook</a></li>
+                    </ul>
+
+                    <div id="i-am-a-ninja" class="module">
+                        <h1>Doug Rathbone</h1>
+                        <h2>All-round Internet Guy</h2>
+                    </div>
+
+                    <div id="site-search" role="search" class="module">
+                        <form action="//www.google.com/search" method="get" id="search-form">
+                            <label for="txt-search">Search</label>
+                            <input type="hidden" name="as_sitesearch" value="www.diaryofaninja.com" />
+                            <input type="text" value="" id="txt-search" name="as_q">
+                            <input type="submit" value="Search" title="Search Doug Rathbone" id="btn-search">
+                        </form>
+                    </div>
+
+                    <nav id="site-nav" role="navigation" class="module">
+                        <ul>
+                            <li><a href="/">Home</a></li>
+                            <li><a href="/me">Contact Me</a></li>
+                        </ul>
+                    </nav>
+                    <div style="padding-bottom:3px;">
+                        <a href="https://oncheckin.com/?utm_source=diaryofaninja-right-nav&utm_medium=banner&utm_campaign=self-promotion" target="_blank"><img src="/Asset/Img/OnCheckin_320x220.gif" border="0" width="300" height="250" /></a>
+                    </div>
+                    <div>
+                        <div id="ad1" data-type="ad" lqm_publisher="lqm.diaryofninja.site" data-tags="ASP.Net%2cASP.net MVC%2ccontinuous integration%2ccontinuous deployment%2csecurity%2cagile%2cdeveloper tooling" lqm_zone="ron" lqm_format="300x250"></div>
+                    </div>
+
+<div id="recent-posts" class="module">
+    <h1>
+        Recent Posts</h1>
+    <nav>
+        <ul>                <li><a href="/blog/2020/09/14/making-linux-samba-shares-browsable-to-windows-hosts-after-wannacry">Making Linux Samba shares visible to Windows hosts after WannaCry</a></li>
+                <li><a href="/blog/2020/03/29/the-dirty-dozen-ndash-what-engineering-teams-can-learn-from-human-factors-in-aviation">Engineering teams can learn from Human Factors in Aviation</a></li>
+                <li><a href="/blog/2018/04/02/fixing-broken-samba-sharing-after-installing-the-latest-version-of-windows-10">Fixing broken Samba File Share access for Linux hosts after installing the latest version of Windows 10</a></li>
+                <li><a href="/blog/2018/03/31/configuring-a-thirdparty-asus-rtac3200-router-to-directly-connect-to-a-centurylink-gigabit-gpon-service">Configuring a Third-Party Asus RT-AC3200 router to directly connect to a CenturyLink Gigabit GPON Service</a></li>
+                <li><a href="/blog/2018/03/31/configuring-a-ubiquiti-unifi-controller-to-run-on-raspberry-pi">Migrating a Ubiquiti Unifi Controller to run on a Raspberry Pi for Pennies</a></li>
+                <li><a href="/blog/2016/02/28/pci-compliant-web-deploy-getting-webdeploy-working-after-disabling-insecure-ciphers-like-ssl-30-and-tls-10">Getting WebDeploy working after disabling insecure Ciphers like SSL 3.0 and TLS 1.0</a></li>
+                <li><a href="/blog/2016/01/15/add-custom-calltoactions-to-your-customerrsquos-gmail-inbox-by-sending-with-gmail-email-markup">Add Custom Call-to-actions to your Customer&rsquo;s Gmail Inbox by sending with Gmail Email Markup</a></li>
+                <li><a href="/blog/2015/11/18/when-gitignore-stops-being-your-friend-debugging-missing-git-repository-files">When .gitignore stops being your friend - Debugging missing Git repository files</a></li>
+                <li><a href="/blog/2015/08/30/running-android-apps-on-windows-phone-10-preview">Running Android apps on Windows Phone 10 preview</a></li>
+                <li><a href="/blog/2014/09/11/so-you-want-your-team-to-start-using-git-ndash-part-4-team-workflows">So you want your Team to start using Git? &ndash; Part 4: Team Workflows</a></li>
+                <li><a href="/blog/2014/08/27/so-you-want-your-team-to-start-using-git-ndash-part-3-more-than-just-committing">So you want your Team to start using Git? &ndash; Part 3: More than just Committing</a></li>
+                <li><a href="/blog/2014/08/20/so-you-want-your-team-to-start-using-git-ndash-part-2-pushing-it-up-somewhere">So you want your Team to start using Git? &ndash; Part 2: Pushing it up Somewhere</a></li>
+                <li><a href="/blog/2014/08/20/so-you-want-your-team-to-start-using-git-ndash-part-1-getting-started">So you want your Team to start using Git? &ndash; Part 1: Getting started</a></li>
+                <li><a href="/blog/2014/04/13/101-pedantic-programmerrsquos-thoughts-on-lenovorsquos-new-thinkpad-x240">101 Pedantic Programmer&rsquo;s thoughts on Lenovo&rsquo;s new ThinkPad X240</a></li>
+                <li><a href="/blog/2014/03/20/investigating-aspnet-memory-dumps-for-idiots-like-me">Investigating ASP.Net Memory Dumps for Idiots (like Me)</a></li>
+        </ul>
+    </nav>
+</div>
+                </section>
+
+                <section id="sb-secondary">
+
+<div id="popular-posts" class="module">
+    <h1>
+        Popular Posts</h1>
+    <nav>
+        <ul>
+                <li><a href="/blog/2013/11/18/testing-connectivity-to-microsoft-sql-server-without-any-tools-installed">Testing connectivity to Microsoft SQL Server without any tools installed</a></li>
+                <li><a href="/blog/2011/07/24/writing-your-own-custom-aspnet-mvc-authorize-attributes">Writing your own custom ASP.Net MVC [Authorize] attributes</a></li>
+                <li><a href="/blog/2010/11/23/debugging-sql-queries-function-amp-stored-procedures-with-sql-management-studio">Debugging SQL Queries, Functions, &amp; Stored Procedures with SQL Management Studio&rsquo;s Integrated Debugger</a></li>
+                <li><a href="/blog/2015/08/30/running-android-apps-on-windows-phone-10-preview">Running Android apps on Windows Phone 10 preview</a></li>
+                <li><a href="/blog/2014/03/20/investigating-aspnet-memory-dumps-for-idiots-like-me">Investigating ASP.Net Memory Dumps for Idiots (like Me)</a></li>
+                <li><a href="/blog/2014/01/29/htmlantiforgerytoken-ndash-balancing-security-with-usability">Html.AntiForgeryToken &ndash; Balancing Security with Usability</a></li>
+                <li><a href="/blog/2011/09/14/using-custom-webconfig-transformations-in-msbuild">Using Custom Web.config Transformations in MSBUILD</a></li>
+                <li><a href="/blog/2018/04/02/fixing-broken-samba-sharing-after-installing-the-latest-version-of-windows-10">Fixing broken Samba File Share access for Linux hosts after installing the latest version of Windows 10</a></li>
+                <li><a href="/blog/2009/09/25/running-large-mssql-scripts-amp--resulting-memory-errors">Running large MSSQL scripts &amp;  resulting memory errors</a></li>
+                <li><a href="/blog/2010/05/09/automated-site-deployments-with-teamcity-deployment-projects-amp-svn">Automated deployments with TeamCity, Deployment projects &amp; SVN</a></li>
+        </ul>
+    </nav>
+</div>
+                    <div>
+                        <div id="ad2" data-type="ad" lqm_publisher="lqm.diaryofninja.site" data-tags="ASP.Net%2cASP.net MVC%2ccontinuous integration%2ccontinuous deployment%2csecurity%2cagile%2cdeveloper tooling" lqm_zone="ron" lqm_format="300x250"></div>
+                    </div>
+
+<div id="site-tags" class="module">
+    <h1>
+        Tags</h1>
+    <nav>
+        <ul>                    <li><a href="/tag/%2Enet-4">.Net 4</a>,</li>
+                    <li><a href="/tag/accessibility">Accessibility</a>,</li>
+                    <li><a href="/tag/active-directory">Active Directory</a>,</li>
+                    <li><a href="/tag/advertising">Advertising</a>,</li>
+                    <li><a href="/tag/ajax">Ajax</a>,</li>
+                    <li><a href="/tag/amazon-aws">Amazon AWS</a>,</li>
+                    <li><a href="/tag/analytics">Analytics</a>,</li>
+                    <li><a href="/tag/android">Android</a>,</li>
+                    <li><a href="/tag/apple">Apple</a>,</li>
+                    <li><a href="/tag/arachnophobia">Arachnophobia</a>,</li>
+                    <li><a href="/tag/asp%2Enet">ASP.Net</a>,</li>
+                    <li><a href="/tag/asp%2Enet-mvc">ASP.Net MVC</a>,</li>
+                    <li><a href="/tag/automation">Automation</a>,</li>
+                    <li><a href="/tag/azure">Azure</a>,</li>
+                    <li><a href="/tag/best-practices">Best Practices</a>,</li>
+                    <li><a href="/tag/blackberry">Blackberry</a>,</li>
+                    <li><a href="/tag/browsers">Browsers</a>,</li>
+                    <li><a href="/tag/c%23">C#</a>,</li>
+                    <li><a href="/tag/certifications">Certifications</a>,</li>
+                    <li><a href="/tag/cloud-services">Cloud Services</a>,</li>
+                    <li><a href="/tag/conferences">Conferences</a>,</li>
+                    <li><a href="/tag/config-transformations">Config Transformations</a>,</li>
+                    <li><a href="/tag/continuous-integration">Continuous Integration</a>,</li>
+                    <li><a href="/tag/css">CSS</a>,</li>
+                    <li><a href="/tag/database">Database</a>,</li>
+                    <li><a href="/tag/debugging">Debugging</a>,</li>
+                    <li><a href="/tag/deployment">Deployment</a>,</li>
+                    <li><a href="/tag/design">Design</a>,</li>
+                    <li><a href="/tag/devops">DevOps</a>,</li>
+                    <li><a href="/tag/dkim">DKIM</a>,</li>
+                    <li><a href="/tag/dns">DNS</a>,</li>
+                    <li><a href="/tag/domain-keys">Domain Keys</a>,</li>
+                    <li><a href="/tag/e-mail">E-mail</a>,</li>
+                    <li><a href="/tag/exceptions">Exceptions</a>,</li>
+                    <li><a href="/tag/exchange-server">Exchange Server</a>,</li>
+                    <li><a href="/tag/gadotnet">GaDotNet</a>,</li>
+                    <li><a href="/tag/general-banter">General banter</a>,</li>
+                    <li><a href="/tag/git">Git</a>,</li>
+                    <li><a href="/tag/googleanalyticsdotnet">GoogleAnalyticsDotNet</a>,</li>
+                    <li><a href="/tag/hardware">Hardware</a>,</li>
+                    <li><a href="/tag/hidden-features">Hidden features</a>,</li>
+                    <li><a href="/tag/hosting">Hosting</a>,</li>
+                    <li><a href="/tag/hyper-v">Hyper V</a>,</li>
+                    <li><a href="/tag/iis">IIS</a>,</li>
+                    <li><a href="/tag/internet-explorer">Internet Explorer</a>,</li>
+                    <li><a href="/tag/intheknow">InTheKnow</a>,</li>
+                    <li><a href="/tag/javascript">JavaScript</a>,</li>
+                    <li><a href="/tag/jquery">jQuery</a>,</li>
+                    <li><a href="/tag/kinect">Kinect</a>,</li>
+                    <li><a href="/tag/kinect-sdk">Kinect SDK</a>,</li>
+                    <li><a href="/tag/linux">Linux</a>,</li>
+                    <li><a href="/tag/mail-server">Mail Server</a>,</li>
+                    <li><a href="/tag/mobile-devices">Mobile devices</a>,</li>
+                    <li><a href="/tag/ms-sql">MS SQL</a>,</li>
+                    <li><a href="/tag/msbuild">MSBUILD</a>,</li>
+                    <li><a href="/tag/natural-user-interface">Natural User Interface</a>,</li>
+                    <li><a href="/tag/networking">Networking</a>,</li>
+                    <li><a href="/tag/new-features">New Features</a>,</li>
+                    <li><a href="/tag/newrelic">NewRelic</a>,</li>
+                    <li><a href="/tag/nuget">Nuget</a>,</li>
+                    <li><a href="/tag/offshoring">Offshoring</a>,</li>
+                    <li><a href="/tag/oncheckin">OnCheckin</a>,</li>
+                    <li><a href="/tag/open-source">Open Source</a>,</li>
+                    <li><a href="/tag/opinion">Opinion</a>,</li>
+                    <li><a href="/tag/optimisation">Optimisation</a>,</li>
+                    <li><a href="/tag/other">Other</a>,</li>
+                    <li><a href="/tag/performance">Performance</a>,</li>
+                    <li><a href="/tag/personal-certificates">Personal Certificates</a>,</li>
+                    <li><a href="/tag/personal-projects">Personal Projects</a>,</li>
+                    <li><a href="/tag/piracy">Piracy</a>,</li>
+                    <li><a href="/tag/politics">Politics</a>,</li>
+                    <li><a href="/tag/project-management">Project Management</a>,</li>
+                    <li><a href="/tag/publishing-profiles">Publishing Profiles</a>,</li>
+                    <li><a href="/tag/raspberry-pi">Raspberry Pi</a>,</li>
+                    <li><a href="/tag/reflection">Reflection</a>,</li>
+                    <li><a href="/tag/regex">RegEx</a>,</li>
+                    <li><a href="/tag/remote-desktop-connection">Remote Desktop Connection</a>,</li>
+                    <li><a href="/tag/security">Security</a>,</li>
+                    <li><a href="/tag/shared-hosting">Shared hosting</a>,</li>
+                    <li><a href="/tag/sharepoint">SharePoint</a>,</li>
+                    <li><a href="/tag/silverlight">Silverlight</a>,</li>
+                    <li><a href="/tag/silverlight-toolkit">Silverlight Toolkit</a>,</li>
+                    <li><a href="/tag/simpledeploy">SimpleDeploy</a>,</li>
+                    <li><a href="/tag/smtp">SMTP</a>,</li>
+                    <li><a href="/tag/social-networking">Social Networking</a>,</li>
+                    <li><a href="/tag/source-control">Source Control</a>,</li>
+                    <li><a href="/tag/spam">Spam</a>,</li>
+                    <li><a href="/tag/sql">SQL</a>,</li>
+                    <li><a href="/tag/statistics">Statistics</a>,</li>
+                    <li><a href="/tag/surface-sdk">Surface SDK</a>,</li>
+                    <li><a href="/tag/sys-admin">Sys Admin</a>,</li>
+                    <li><a href="/tag/talks">Talks</a>,</li>
+                    <li><a href="/tag/team-foundation-server">Team Foundation Server</a>,</li>
+                    <li><a href="/tag/team-management">Team management</a>,</li>
+                    <li><a href="/tag/teamcity">TeamCity</a>,</li>
+                    <li><a href="/tag/telco">Telco</a>,</li>
+                    <li><a href="/tag/telstra">Telstra</a>,</li>
+                    <li><a href="/tag/tfs-2010">TFS 2010</a>,</li>
+                    <li><a href="/tag/time-zones">Time Zones</a>,</li>
+                    <li><a href="/tag/tips-and-tricks">Tips and Tricks</a>,</li>
+                    <li><a href="/tag/tools">Tools</a>,</li>
+                    <li><a href="/tag/troubleshooting">Troubleshooting</a>,</li>
+                    <li><a href="/tag/ubiquiti-networks">Ubiquiti Networks</a>,</li>
+                    <li><a href="/tag/unifi">Unifi</a>,</li>
+                    <li><a href="/tag/unit-testing">Unit Testing</a>,</li>
+                    <li><a href="/tag/usability">Usability</a>,</li>
+                    <li><a href="/tag/vb%2Enet">VB.Net</a>,</li>
+                    <li><a href="/tag/video">Video</a>,</li>
+                    <li><a href="/tag/virtualisation">Virtualisation</a>,</li>
+                    <li><a href="/tag/visual-studio">Visual Studio</a>,</li>
+                    <li><a href="/tag/vodafone">Vodafone</a>,</li>
+                    <li><a href="/tag/vsix">VSIX</a>,</li>
+                    <li><a href="/tag/w3c">W3C</a>,</li>
+                    <li><a href="/tag/wcag">WCAG</a>,</li>
+                    <li><a href="/tag/web-deploy">Web Deploy</a>,</li>
+                    <li><a href="/tag/web-security">Web security</a>,</li>
+                    <li><a href="/tag/wifi">WiFi</a>,</li>
+                    <li><a href="/tag/windbg">WinDbg</a>,</li>
+                    <li><a href="/tag/windows-phone-10">Windows Phone 10</a>,</li>
+                    <li><a href="/tag/windows-phone-7">Windows Phone 7</a>,</li>
+                    <li><a href="/tag/windows-phone-7-mango">Windows Phone 7 Mango</a>,</li>
+                    <li><a href="/tag/windows-phone-sdk">Windows Phone SDK</a>,</li>
+                    <li><a href="/tag/windows-server">Windows Server</a>,</li>
+                    <li><a href="/tag/xml">XML</a></li>
+
+        </ul>
+    </nav>
+</div>
+                </section>
+            </aside>
+            <div class="clearfix">
+            </div>
+        </div>
+        <footer id="site-footer" class="clearfix">
+            <h1>Disclaimer: </h1>
+            <p>
+                The opinions expressed herein are my own and do not represent my employer&rsquo;s view in any way.
+                <br>
+                They are strong opinions lightly held - feel free to <a href="/me">set me straight</a>.
+            </p>
+            <p>
+                Site designed with love by Doug Rathbone in late 2011.
+                <br>
+                Awesomely HTMLified by the great <a href="http://afterlight.com.au">JVDL</a>
+                <br>
+                Deployed Early and Often by the Awesome <a href="https://oncheckin.com">OnCheckin</a>
+                <br />
+                All content unless otherwise attributed is copyright 2011 &copy; Doug Rathbone.
+            </p>
+        </footer>
+    </div>
+    <!--! end of #container -->
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" async></script>
+    <script> window.jQuery || document.write('<script src="/asset/js/jquery-1.7.1.min.js" async><\/script>') </script>
+    <script defer src="/asset/js/ninjaslivehere.js" async> </script>
+    <script defer src="/asset/js/plugins.min.js" async> </script>
+
+<script type="text/javascript">
+    var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+    document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+
+</script>
+<script type="text/javascript">
+    try {
+        var pageTracker = _gat._getTracker("UA-514640-2");
+        pageTracker._trackPageview();
+    } catch(err) {
+    }
+</script>
+    <!-- Prompt IE 6 users to install Chrome Frame. Remove this if you want to support IE 6.
+        chromium.org/developers/how-tos/chrome-frame-getting-started -->
+    <!--[if lt IE 7 ]>
+        <script src="//ajax.googleapis.com/ajax/libs/chrome-frame/1.0.3/CFInstall.min.js"> </script>
+        <script> window.attachEvent('onload', function() { CFInstall.check({ mode: 'overlay' }); }) </script>
+    <![endif]-->
+    <script type='text/javascript'>
+        function _dmBootstrap(file) {
+            var _dma = document.createElement('script');
+            _dma.type = 'text/javascript';
+            _dma.async = true;
+            _dma.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + file;
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(_dma);
+        }
+        function _dmFollowup(file) { if (typeof DMAds === 'undefined') _dmBootstrap('cdn2.DeveloperMedia.com/a.min.js'); }
+        (function () { _dmBootstrap('cdn1.DeveloperMedia.com/a.min.js'); setTimeout(_dmFollowup, 2000); })();
+    </script>
+    <script type="text/javascript">
+        rg4js('apiKey', '5oYO23ot42l1ReRkjqs0rg==');
+        rg4js('enableCrashReporting', true);
+        rg4js('enablePulse', true);
+    </script>
+    
+
+</body>
+</html>
